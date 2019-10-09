@@ -1,3 +1,11 @@
+/** Server
+ * @Fullname: Hoang Thi Linh
+ * @Student code: 17020852
+ * @Description:
+ * Listen on port 6500
+ * Recevied file from client upload
+ * Buffer size from input
+ */
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>

@@ -1,3 +1,10 @@
+/** Server
+ * @Fullname: Hoang Thi Linh
+ * @Student code: 17020852
+ * @Description:
+ * Listen on port 6500.
+ * Send files on which clients requested (if possible).
+ */
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>

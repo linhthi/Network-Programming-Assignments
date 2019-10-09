@@ -1,3 +1,10 @@
+/** Client - download files from server.
+ * @Full name: Hoang Thi Linh
+ * @Student code: 17020852
+ * @Description:
+ * Allow users to download file from a server.
+ * Server's IP, port, and filenames are input from the keyboard.
+ */
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>

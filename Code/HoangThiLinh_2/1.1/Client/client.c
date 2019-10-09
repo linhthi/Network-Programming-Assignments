@@ -1,3 +1,10 @@
+/** Client - upload file to server.
+ * @Full name: Hoang Thi Linh
+ * @Student code: 17020852
+ * @Description:
+ * Allow user to upload file to server.
+ * Server's IP, port, and filename are input from the keyboard.
+ */
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
