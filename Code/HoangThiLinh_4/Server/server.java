@@ -20,17 +20,18 @@ class SocketThread extends Thread{
 		InetAddress addr = conn.getInetAddress();
 		int port = conn.getPort();
 		System.out.println("connection from client: " + addr.toString() + ":" + port);
-		BufferedReader br = null;
-		BufferedWriter bw = null;
+		DataInputStream in = null;
+		DataOutputStream out = null;
 		Scanner scanner = new Scanner(System.in);
+
 		try{
-			br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-			bw = new BufferedWriter(new OutputStreamWriter(conn.getOutputStream()));
+			in = new DataInputStream(conn.getInputStream());
+			out = new DataOutputStream(conn.getOutputStream());
 			int thisNFileDowns = 0;
-			char[] buff = new char[4096];
+			byte[] buff = new byte[4096];
 			String s = null;
 			while (true){
-				String request = br.readLine();
+				String request = in.readUTF();
 				System.out.println("Command from client " + request);
 
 				// send the list file folder's
@@ -43,22 +44,20 @@ class SocketThread extends Thread{
 					else {
 						int total = children.length;
 						// send the number of file at the folder
-						bw.write(Integer.toString(total));
-						bw.newLine();
-						bw.flush();
+						out.writeUTF(Integer.toString(total));
+						out.flush();
 						
 						// send list file name
 						for (int i = 0; i < children.length; i++) {
 							String filename = children[i];
-							bw.write(filename);
-							bw.newLine();
-							bw.flush();
+							out.writeUTF(filename);
+							out.flush();
 						}
 					}   
 				}
 				// send file using filename request from client
 				else if (request.equals("2")) {
-					String filename = br.readLine();
+					String filename = in.readUTF();
 
 					if (filename == null){
 						System.err.println(addr.toString() + ":" + port + " closed connection");
@@ -70,40 +69,35 @@ class SocketThread extends Thread{
 	
 					File file = null;
 					FileInputStream fis = null;
-					BufferedReader brFile = null;
 	
 					long filesize = 0;
 					try{
 						filename = "SharedFolder/" +  filename;
 						file = new File(filename);
 						fis = new FileInputStream(file);
-						brFile = new BufferedReader(new InputStreamReader(fis)); 
 						filesize = file.length();
 					} catch (IOException ex){
 						ex.printStackTrace();
 						System.err.println("cannot open \'" + filename + "\'");
-						bw.write("0");
-						bw.newLine();
-						bw.flush();
+						out.writeUTF("0");
+						out.flush();
 						continue;
 					}
 	
 					System.out.print("size of \'" + filename + "\': " + filesize + "\n");
 					//send filesize
-					bw.write(Long.toString(filesize));
-					bw.newLine();
-					bw.flush();
+					out.writeUTF(Long.toString(filesize));
+					out.flush();
 					System.err.print("sent filesize to " + addr.toString() + ":" + port + "\n");
 					int nBytes = 0;
 					boolean fileError = false;
 					while (nBytes != -1){
 	
 						try{
-							nBytes = brFile.read(buff, 0, buff.length);
+							nBytes = fis.read(buff, 0, buff.length);
 						} catch (IOException ex){
 							ex.printStackTrace();
 							fileError = true;
-							brFile.close();
 							fis.close();
 						}
 	
@@ -111,8 +105,9 @@ class SocketThread extends Thread{
 							break;
 						}
 	
-						bw.write(buff, 0, nBytes);
-						bw.flush();
+						// Write in Socket Conn
+						out.write(buff, 0, nBytes);
+						out.flush();
 						
 					}
 	
@@ -129,16 +124,15 @@ class SocketThread extends Thread{
 				}
 				else if (request.equals("3")) {
 					//read filename
-					String filename = br.readLine();
+					String filename = in.readUTF();
 					//read filesize
-					s = br.readLine();
+					s = in.readUTF();
 					long filesize = Long.parseLong(s);
 					System.out.println("filesize: " + filesize);
 	
 					long nBytesRead = 0;
 					filename = "SharedFolder/" +  filename;
 					FileOutputStream fos = new FileOutputStream(filename);
-					BufferedWriter bwFile = new BufferedWriter(new OutputStreamWriter(fos));
 	
 					try{
 						while (nBytesRead < filesize){
@@ -149,18 +143,16 @@ class SocketThread extends Thread{
 							else
 								needToRead = 4096;
 	
-							int nBytes = br.read(buff, 0, (int)needToRead);
+							int nBytes = in.read(buff, 0, (int)needToRead);
 							nBytesRead += nBytes;
-							bwFile.write(buff, 0, nBytes);
+							fos.write(buff, 0, nBytes);
 						}
 					}catch (SocketTimeoutException ex){
 						System.err.println("encountered error while reading the file at the client side");
-						bwFile.close();
 						fos.close();
 						continue;
 					}
 					System.out.printf("uploading '%s' done\n", filename);
-					bwFile.close();
 					fos.close();
 					increaseCountUpload();
 				}
@@ -173,8 +165,8 @@ class SocketThread extends Thread{
 			System.err.println("closing connection to " + addr.toString() + ":"
 								+ port);
 			try{
-				bw.close();
-				br.close();
+				in.close();
+				out.close();
 				scanner.close();
 				conn.close();
 			} catch (IOException ex2){

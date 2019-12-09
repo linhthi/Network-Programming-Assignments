@@ -15,6 +15,8 @@ public class client{
 		Scanner scanner = null;
 		String[] tokens = null;
 		Socket servSock = null;
+		DataInputStream in = null;
+		DataOutputStream out = null;
 		try{
 			scanner = new Scanner(System.in);
 			tokens = scanner.nextLine().split(":");
@@ -25,11 +27,9 @@ public class client{
 			servSock = new Socket(addr, port);
 			servSock.setSoTimeout(5000);
 
-			BufferedWriter bw = new BufferedWriter(
-					new OutputStreamWriter(servSock.getOutputStream()));
-			BufferedReader br = new BufferedReader(
-					new InputStreamReader(servSock.getInputStream()));
-			char[] buff = new char[4096];
+			out = new DataOutputStream(servSock.getOutputStream());
+			in = new DataInputStream(servSock.getInputStream());
+			byte[] buff = new byte[4096];
 
 			while (true){
 				System.out.println("Enter your choice: ");
@@ -40,19 +40,18 @@ public class client{
 				System.out.println("@logout: for exit and close connection");
 				System.out.println("---------------------------------------");
 				String c = scanner.nextLine();
-				bw.write(c);
-				bw.newLine();
-				bw.flush();
+				out.writeUTF(c);
+				out.flush();
 				String s = null;
 				if (c.equals("1")) {
 					System.out.println("This is the list file:");
 					// read the number of file in this folder
-					s = br.readLine();
+					s = in.readUTF();
                 	int total = Integer.parseInt(s);
 					System.out.println("number of file: " + total);
 					// print the list file
 					for (int i = 0; i < total; i++){
-						String fileName = br.readLine();
+						String fileName = in.readUTF();
 						System.out.println(fileName);
 					}
 					System.out.println("\n");
@@ -66,12 +65,11 @@ public class client{
 						continue;
 	
 					//send filename
-					bw.write(filename + "\n");
-					bw.newLine();
-					bw.flush();
+					out.writeUTF(filename + "\n");
+					out.flush();
 					
 					//read filesize
-					s = br.readLine();
+					s = in.readUTF();
 					long filesize = Long.parseLong(s);
 					if (filesize == 0){
 						System.out.println("Cannot download the file");
@@ -82,7 +80,6 @@ public class client{
 					long nBytesRead = 0;
 					filename = "SharedFolder/" +  filename;
 					FileOutputStream fos = new FileOutputStream(filename);
-					BufferedWriter bwFile = new BufferedWriter(new OutputStreamWriter(fos));
 	
 					try{
 						while (nBytesRead < filesize){
@@ -93,18 +90,16 @@ public class client{
 							else
 								needToRead = 4096;
 	
-							int nBytes = br.read(buff, 0, (int)needToRead);
+							int nBytes = in.read(buff, 0, (int)needToRead);
 							nBytesRead += nBytes;
-							bwFile.write(buff, 0, nBytes);
+							fos.write(buff, 0, nBytes);
 						}
 					}catch (SocketTimeoutException ex){
 						System.err.println("encountered error while reading the file at the server side");
-						bwFile.close();
 						fos.close();
 						continue;
 					}
 					System.out.printf("downloading '%s' done\n", filename);
-					bwFile.close();
 					fos.close();
 				}
 				else if (c.equals("3")) {
@@ -116,46 +111,40 @@ public class client{
 						continue;
 	
 					//send filename
-					bw.write(filename);
-					bw.newLine();
-					bw.flush();
+					out.writeUTF(filename);
+					out.flush();
 					
 					File file = null;
 					FileInputStream fis = null;
-					BufferedReader brFile = null;
 	
 					long filesize = 0;
 					try{
 						filename = "SharedFolder/" +  filename;
 						file = new File(filename);
 						fis = new FileInputStream(file);
-						brFile = new BufferedReader(new InputStreamReader(fis)); 
 						filesize = file.length();
 					} catch (IOException ex){
 						ex.printStackTrace();
 						System.err.println("cannot open \'" + filename + "\'");
-						bw.write("0");
-						bw.newLine();
-						bw.flush();
+						out.writeUTF("0");
+						out.flush();
 						continue;
 					}
 	
 					System.out.print("size of \'" + filename + "\': " + filesize + "\n");
 					//send filesize
-					bw.write(Long.toString(filesize));
-					bw.newLine();
-					bw.flush();
+					out.writeUTF(Long.toString(filesize));
+					out.flush();
 					System.err.print("sent filesize to server \n");
 					int nBytes = 0;
 					boolean fileError = false;
 					while (nBytes != -1){
 	
 						try{
-							nBytes = brFile.read(buff, 0, buff.length);
+							nBytes = fis.read(buff, 0, buff.length);
 						} catch (IOException ex){
 							ex.printStackTrace();
 							fileError = true;
-							brFile.close();
 							fis.close();
 						}
 	
@@ -163,8 +152,8 @@ public class client{
 							break;
 						}
 	
-						bw.write(buff, 0, nBytes);
-						bw.flush();
+						out.write(buff, 0, nBytes);
+						out.flush();
 					}
 	
 					if (fileError)
